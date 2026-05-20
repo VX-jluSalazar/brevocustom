@@ -367,6 +367,7 @@ class Brevocustom extends Module
         $address = new Address((int) $order->id_address_delivery);
         $idShop = (int) $order->id_shop ?: (int) $this->context->shop->id;
         $idLang = (int) $order->id_lang ?: (int) $this->context->language->id;
+        $paymentMethodId = $this->getPaymentMethodId((string) $order->module);
 
         $products = $this->buildOrderProducts($order, $idLang);
         $categoryIds = [];
@@ -388,7 +389,8 @@ class Brevocustom extends Module
 
         $shopReviews = (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5);
 
-        $eventDate = $this->formatDateForBrevo($order->date_add ?: date('Y-m-d H:i:s'));
+        $orderDate = $this->formatDateForBrevo($order->date_add ?: date('Y-m-d H:i:s'));
+        $orderDateFormatted = $this->formatCalendarDate((string) $order->date_add);
         $reorderUrl = str_replace(
             '{id_order}',
             (string) (int) $order->id,
@@ -397,7 +399,9 @@ class Brevocustom extends Module
 
         return [
             'event_name' => 'vx_order_created',
-            'event_date' => $eventDate,
+            'event_date' => $orderDate,
+            '_log_object_type' => 'order',
+            '_log_object_id' => 'ps_order_' . (int) $order->id,
             'identifiers' => [
                 'email_id' => (string) $customer->email,
                 'ext_id' => 'ps_customer_' . (int) $customer->id,
@@ -410,15 +414,33 @@ class Brevocustom extends Module
             'event_properties' => [
                 'order_id' => (int) $order->id,
                 'order_reference' => (string) $order->reference,
+                'order_date' => $orderDate,
+                'order_date_formatted' => $orderDateFormatted,
                 'order_status' => Validate::isLoadedObject($orderState) ? (string) $orderState->name : '',
                 'order_status_id' => (int) $order->current_state,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
                 'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
                 'total_paid' => (float) $order->total_paid,
+                'total_paid_tax_incl' => (float) $order->total_paid_tax_incl,
+                'total_paid_tax_excl' => (float) $order->total_paid_tax_excl,
+                'total_tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
                 'total_products' => (float) $order->total_products,
+                'total_products_tax_incl' => (float) $order->total_products_wt,
+                'total_products_tax_excl' => (float) $order->total_products,
+                'total_products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
                 'total_shipping' => (float) $order->total_shipping,
+                'total_shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
+                'total_shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
+                'total_shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
                 'total_discounts' => (float) $order->total_discounts,
+                'total_discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
+                'total_discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
+                'total_discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
+                'payment_method_id' => $paymentMethodId,
                 'payment_method' => (string) $order->payment,
+                'payment_module' => (string) $order->module,
+                'carrier_id' => (int) $order->id_carrier,
+                'carrier_reference_id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0,
                 'carrier_name' => Validate::isLoadedObject($carrier) ? (string) $carrier->name : '',
                 'customer_email' => (string) $customer->email,
                 'customer_firstname' => (string) $customer->firstname,
@@ -430,12 +452,6 @@ class Brevocustom extends Module
                 'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
                 'reorder_url' => $reorderUrl,
                 'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
-            ],
-            'object' => [
-                'type' => 'order',
-                'identifiers' => [
-                    'ext_id' => 'ps_order_' . (int) $order->id,
-                ],
             ],
         ];
     }
@@ -452,6 +468,7 @@ class Brevocustom extends Module
         $carrier = new Carrier((int) $order->id_carrier, (int) $order->id_lang);
         $idShop = (int) $order->id_shop ?: (int) $this->context->shop->id;
         $idLang = (int) $order->id_lang ?: (int) $this->context->language->id;
+        $paymentMethodId = $this->getPaymentMethodId((string) $order->module);
         $products = $this->buildOrderProducts($order, $idLang);
         $categoryIds = [];
         $excludedProductIds = [];
@@ -471,6 +488,8 @@ class Brevocustom extends Module
             ? (string) $servientrega['rastreoEnvio']
             : 'https://www.servientrega.com.ec/rastreo';
         $eventDate = date(DATE_ATOM);
+        $orderDate = $this->formatDateForBrevo($order->date_add ?: date('Y-m-d H:i:s'));
+        $orderDateFormatted = $this->formatCalendarDate((string) $order->date_add);
         $reorderUrl = str_replace(
             '{id_order}',
             (string) (int) $order->id,
@@ -494,6 +513,8 @@ class Brevocustom extends Module
         return [
             'event_name' => $eventName,
             'event_date' => $eventDate,
+            '_log_object_type' => 'order',
+            '_log_object_id' => 'ps_order_' . (int) $order->id,
             'identifiers' => [
                 'email_id' => (string) $customer->email,
                 'ext_id' => 'ps_customer_' . (int) $customer->id,
@@ -502,11 +523,33 @@ class Brevocustom extends Module
             'event_properties' => [
                 'order_id' => (int) $order->id,
                 'order_reference' => (string) $order->reference,
+                'order_date' => $orderDate,
+                'order_date_formatted' => $orderDateFormatted,
                 'order_status' => Validate::isLoadedObject($orderState) ? (string) $orderState->name : '',
                 'order_status_id' => (int) $order->current_state,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
                 'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
                 'total_paid' => (float) $order->total_paid,
+                'total_paid_tax_incl' => (float) $order->total_paid_tax_incl,
+                'total_paid_tax_excl' => (float) $order->total_paid_tax_excl,
+                'total_tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
+                'total_products' => (float) $order->total_products,
+                'total_products_tax_incl' => (float) $order->total_products_wt,
+                'total_products_tax_excl' => (float) $order->total_products,
+                'total_products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
+                'total_shipping' => (float) $order->total_shipping,
+                'total_shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
+                'total_shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
+                'total_shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
+                'total_discounts' => (float) $order->total_discounts,
+                'total_discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
+                'total_discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
+                'total_discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
+                'payment_method_id' => $paymentMethodId,
+                'payment_method' => (string) $order->payment,
+                'payment_module' => (string) $order->module,
+                'carrier_id' => (int) $order->id_carrier,
+                'carrier_reference_id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0,
                 'carrier_name' => Validate::isLoadedObject($carrier) ? (string) $carrier->name : '',
                 'tracking_code' => $trackingCode,
                 'tracking_url' => $trackingUrl,
@@ -523,12 +566,6 @@ class Brevocustom extends Module
                 'reorder_url' => $reorderUrl,
                 'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
             ],
-            'object' => [
-                'type' => 'order',
-                'identifiers' => [
-                    'ext_id' => 'ps_order_' . (int) $order->id,
-                ],
-            ],
         ];
     }
 
@@ -542,6 +579,8 @@ class Brevocustom extends Module
         return [
             'event_name' => 'vx_subscriber',
             'event_date' => $subscribedAt,
+            '_log_object_type' => 'subscription',
+            '_log_object_id' => 'newsletter_' . $this->normalizeIdentifier($email),
             'identifiers' => [
                 'email_id' => $email,
                 'ext_id' => 'newsletter_' . $this->normalizeIdentifier($email),
@@ -562,12 +601,6 @@ class Brevocustom extends Module
                 'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 'shop_reviews' => (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5),
                 'main_categories' => $this->getMainCategories((int) $this->context->language->id, $idShop),
-            ],
-            'object' => [
-                'type' => 'subscription',
-                'identifiers' => [
-                    'ext_id' => 'newsletter_' . $this->normalizeIdentifier($email),
-                ],
             ],
         ];
     }
@@ -600,10 +633,20 @@ class Brevocustom extends Module
 
         $eventDate = date(DATE_ATOM);
         $cartUpdatedAt = $this->formatDateForBrevo((string) $cart->date_upd);
+        $cartTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::BOTH);
+        $cartTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::BOTH);
+        $cartProductsTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_PRODUCTS);
+        $cartProductsTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_PRODUCTS);
+        $cartShippingTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_SHIPPING);
+        $cartShippingTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_SHIPPING);
+        $cartDiscountsTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS);
+        $cartDiscountsTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_DISCOUNTS);
 
         return [
             'event_name' => 'vx_abandoned_cart',
             'event_date' => $eventDate,
+            '_log_object_type' => 'cart',
+            '_log_object_id' => 'ps_cart_' . (int) $cart->id,
             'identifiers' => [
                 'email_id' => (string) $customer->email,
                 'ext_id' => 'ps_customer_' . (int) $customer->id,
@@ -621,9 +664,22 @@ class Brevocustom extends Module
                 'customer_email' => (string) $customer->email,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
                 'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
-                'cart_total' => (float) $cart->getOrderTotal(true, Cart::BOTH),
-                'cart_products_total' => (float) $cart->getOrderTotal(true, Cart::ONLY_PRODUCTS),
-                'cart_shipping_total' => (float) $cart->getOrderTotal(true, Cart::ONLY_SHIPPING),
+                'cart_total' => $cartTotalTaxIncl,
+                'cart_total_tax_incl' => $cartTotalTaxIncl,
+                'cart_total_tax_excl' => $cartTotalTaxExcl,
+                'cart_total_tax_amount' => $cartTotalTaxIncl - $cartTotalTaxExcl,
+                'cart_products_total' => $cartProductsTotalTaxIncl,
+                'cart_products_total_tax_incl' => $cartProductsTotalTaxIncl,
+                'cart_products_total_tax_excl' => $cartProductsTotalTaxExcl,
+                'cart_products_total_tax_amount' => $cartProductsTotalTaxIncl - $cartProductsTotalTaxExcl,
+                'cart_shipping_total' => $cartShippingTotalTaxIncl,
+                'cart_shipping_total_tax_incl' => $cartShippingTotalTaxIncl,
+                'cart_shipping_total_tax_excl' => $cartShippingTotalTaxExcl,
+                'cart_shipping_total_tax_amount' => $cartShippingTotalTaxIncl - $cartShippingTotalTaxExcl,
+                'cart_discounts_total' => $cartDiscountsTotalTaxIncl,
+                'cart_discounts_total_tax_incl' => $cartDiscountsTotalTaxIncl,
+                'cart_discounts_total_tax_excl' => $cartDiscountsTotalTaxExcl,
+                'cart_discounts_total_tax_amount' => $cartDiscountsTotalTaxIncl - $cartDiscountsTotalTaxExcl,
                 'cart_updated_at' => $cartUpdatedAt,
                 'abandoned_minutes' => (int) floor((time() - strtotime((string) $cart->date_upd)) / 60),
                 'cart_url' => $this->context->link->getPageLink('cart', true, $idLang, ['action' => 'show']),
@@ -634,12 +690,6 @@ class Brevocustom extends Module
                     array_values(array_unique($excludedProductIds)),
                     3
                 ),
-            ],
-            'object' => [
-                'type' => 'cart',
-                'identifiers' => [
-                    'ext_id' => 'ps_cart_' . (int) $cart->id,
-                ],
             ],
         ];
     }
@@ -658,7 +708,10 @@ class Brevocustom extends Module
             $product = new Product($idProduct, false, $idLang, (int) $cart->id_shop);
             $categoryId = (int) ($product->id_category_default ?? 0);
             $quantity = (int) ($cartProduct['cart_quantity'] ?? $cartProduct['quantity'] ?? 0);
-            $unitPrice = (float) ($cartProduct['price_wt'] ?? $cartProduct['price'] ?? 0);
+            $unitPriceTaxIncl = (float) ($cartProduct['price_wt'] ?? $cartProduct['price'] ?? 0);
+            $unitPriceTaxExcl = (float) ($cartProduct['price'] ?? $unitPriceTaxIncl);
+            $totalPriceTaxIncl = (float) ($cartProduct['total_wt'] ?? ($unitPriceTaxIncl * $quantity));
+            $totalPriceTaxExcl = (float) ($cartProduct['total'] ?? ($unitPriceTaxExcl * $quantity));
 
             $products[] = [
                 'id_product' => $idProduct,
@@ -668,8 +721,16 @@ class Brevocustom extends Module
                 'category_id' => $categoryId,
                 'category_name' => $this->getCategoryName($categoryId, $idLang),
                 'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'total_price' => $unitPrice * $quantity,
+                'unit_price' => $unitPriceTaxIncl,
+                'unit_price_tax_incl' => $unitPriceTaxIncl,
+                'unit_price_tax_excl' => $unitPriceTaxExcl,
+                'unit_price_tax_amount' => $unitPriceTaxIncl - $unitPriceTaxExcl,
+                'total_price' => $totalPriceTaxIncl,
+                'total_price_tax_incl' => $totalPriceTaxIncl,
+                'total_price_tax_excl' => $totalPriceTaxExcl,
+                'total_price_tax_amount' => $totalPriceTaxIncl - $totalPriceTaxExcl,
+                'tax_rate' => (float) ($cartProduct['rate'] ?? 0),
+                'tax_name' => (string) ($cartProduct['tax_name'] ?? ''),
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $this->getProductImageUrl($product, $idProduct, $idProductAttribute),
             ];
@@ -691,6 +752,10 @@ class Brevocustom extends Module
 
             $product = new Product($idProduct, false, $idLang, (int) $order->id_shop);
             $categoryId = (int) ($product->id_category_default ?? 0);
+            $unitPriceTaxIncl = (float) ($orderProduct['unit_price_tax_incl'] ?? $orderProduct['product_price'] ?? 0);
+            $unitPriceTaxExcl = (float) ($orderProduct['unit_price_tax_excl'] ?? $orderProduct['product_price'] ?? $unitPriceTaxIncl);
+            $totalPriceTaxIncl = (float) ($orderProduct['total_price_tax_incl'] ?? 0);
+            $totalPriceTaxExcl = (float) ($orderProduct['total_price_tax_excl'] ?? $orderProduct['total_price'] ?? 0);
 
             $products[] = [
                 'id_product' => $idProduct,
@@ -700,8 +765,16 @@ class Brevocustom extends Module
                 'category_id' => $categoryId,
                 'category_name' => $this->getCategoryName($categoryId, $idLang),
                 'quantity' => (int) ($orderProduct['product_quantity'] ?? 0),
-                'unit_price' => (float) ($orderProduct['unit_price_tax_incl'] ?? $orderProduct['product_price'] ?? 0),
-                'total_price' => (float) ($orderProduct['total_price_tax_incl'] ?? 0),
+                'unit_price' => $unitPriceTaxIncl,
+                'unit_price_tax_incl' => $unitPriceTaxIncl,
+                'unit_price_tax_excl' => $unitPriceTaxExcl,
+                'unit_price_tax_amount' => $unitPriceTaxIncl - $unitPriceTaxExcl,
+                'total_price' => $totalPriceTaxIncl,
+                'total_price_tax_incl' => $totalPriceTaxIncl,
+                'total_price_tax_excl' => $totalPriceTaxExcl,
+                'total_price_tax_amount' => $totalPriceTaxIncl - $totalPriceTaxExcl,
+                'tax_rate' => (float) ($orderProduct['tax_rate'] ?? 0),
+                'tax_name' => (string) ($orderProduct['tax_name'] ?? ''),
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $this->getProductImageUrl($product, $idProduct, $idProductAttribute),
                 'is_variant' => $idProductAttribute > 0,
@@ -797,6 +870,17 @@ class Brevocustom extends Module
         return trim((string) $normalized, '_');
     }
 
+    private function getPaymentMethodId(string $moduleName): int
+    {
+        if ($moduleName === '') {
+            return 0;
+        }
+
+        $module = Module::getInstanceByName($moduleName);
+
+        return Validate::isLoadedObject($module) ? (int) $module->id : 0;
+    }
+
     private function getMainCategories(int $idLang, int $idShop): array
     {
         $rootCategoryId = (int) Configuration::get('PS_HOME_CATEGORY');
@@ -833,8 +917,7 @@ class Brevocustom extends Module
             if (file_exists(_PS_CAT_IMG_DIR_ . $idCategory . '.jpg')) {
                 $imageUrl = $this->context->link->getCatImageLink(
                     (string) $row['link_rewrite'],
-                    $idCategory,
-                    ImageType::getFormattedName('category')
+                    $idCategory
                 );
             }
 
@@ -885,6 +968,34 @@ class Brevocustom extends Module
         } catch (Exception $exception) {
             return date(DATE_ATOM);
         }
+    }
+
+    private function formatCalendarDate(string $date): string
+    {
+        try {
+            $dateTime = new DateTime($date ?: date('Y-m-d H:i:s'));
+        } catch (Exception $exception) {
+            $dateTime = new DateTime();
+        }
+
+        $months = [
+            1 => 'enero',
+            2 => 'febrero',
+            3 => 'marzo',
+            4 => 'abril',
+            5 => 'mayo',
+            6 => 'junio',
+            7 => 'julio',
+            8 => 'agosto',
+            9 => 'septiembre',
+            10 => 'octubre',
+            11 => 'noviembre',
+            12 => 'diciembre',
+        ];
+
+        $month = $months[(int) $dateTime->format('n')] ?? $dateTime->format('m');
+
+        return $dateTime->format('d') . ' ' . $month . ', ' . $dateTime->format('Y');
     }
 
     private function installDatabase(): bool

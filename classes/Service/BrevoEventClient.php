@@ -23,11 +23,12 @@ class BrevoEventClient
     {
         $eventName = isset($payload['event_name']) ? (string) $payload['event_name'] : 'unknown';
         $email = $payload['identifiers']['email_id'] ?? null;
-        $objectType = $payload['object']['type'] ?? null;
-        $objectId = $payload['object']['identifiers']['ext_id'] ?? null;
+        $objectType = $payload['_log_object_type'] ?? null;
+        $objectId = $payload['_log_object_id'] ?? null;
+        $requestPayload = $this->payloadForRequest($payload);
 
         if ($this->apiKey === '') {
-            $this->logger->log($eventName, $objectType, $objectId, $email, $payload, 'failed', null, '', 'Missing Brevo API key');
+            $this->logger->log($eventName, $objectType, $objectId, $email, $requestPayload, 'failed', null, '', 'Missing Brevo API key');
 
             return [
                 'success' => false,
@@ -37,10 +38,10 @@ class BrevoEventClient
             ];
         }
 
-        $body = json_encode($payload);
+        $body = json_encode($requestPayload);
         if ($body === false) {
             $error = 'Unable to encode Brevo payload as JSON';
-            $this->logger->log($eventName, $objectType, $objectId, $email, $payload, 'failed', null, '', $error);
+            $this->logger->log($eventName, $objectType, $objectId, $email, $requestPayload, 'failed', null, '', $error);
 
             return [
                 'success' => false,
@@ -52,7 +53,7 @@ class BrevoEventClient
 
         if (!function_exists('curl_init')) {
             $error = 'PHP cURL extension is not available';
-            $this->logger->log($eventName, $objectType, $objectId, $email, $payload, 'failed', null, '', $error);
+            $this->logger->log($eventName, $objectType, $objectId, $email, $requestPayload, 'failed', null, '', $error);
 
             return [
                 'success' => false,
@@ -88,7 +89,7 @@ class BrevoEventClient
             $objectType,
             $objectId,
             $email,
-            $this->debug ? $payload : $this->minimalPayloadForLog($payload),
+            $this->debug ? $requestPayload : $this->minimalPayloadForLog($requestPayload),
             $status,
             $httpCode ?: null,
             is_string($response) ? $response : '',
@@ -109,7 +110,13 @@ class BrevoEventClient
             'event_name' => $payload['event_name'] ?? null,
             'event_date' => $payload['event_date'] ?? null,
             'identifiers' => $payload['identifiers'] ?? [],
-            'object' => $payload['object'] ?? [],
         ];
+    }
+
+    private function payloadForRequest(array $payload): array
+    {
+        unset($payload['_log_object_type'], $payload['_log_object_id']);
+
+        return $payload;
     }
 }
