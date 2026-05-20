@@ -36,10 +36,10 @@ Crear la base tecnica del modulo `brevocustom` para enviar eventos a Brevo de fo
 Valores iniciales sugeridos:
 
 ```text
-BREVOCUSTOM_SHOP_URL=https://farmagro.desarrollovelox.com
-BREVOCUSTOM_SHOP_REVIEW_URL=https://farmagro.desarrollovelox.com/shop-reviews-add
-BREVOCUSTOM_CONTACT_URL=https://api.whatsapp.com/send/?phone=593959212641&text=%C2%A1Hola%21+Necesito+informaci%C3%B3n+sobre%3A+&type=phone_number&app_absent=0
-BREVOCUSTOM_REORDER_URL_PATTERN=https://farmagro.desarrollovelox.com/pedido?submitReorder=1&id_order={id_order}
+BREVOCUSTOM_SHOP_URL={shop_url_obtenida_desde_prestashop}
+BREVOCUSTOM_SHOP_REVIEW_URL={shop_url}/shop-reviews-add
+BREVOCUSTOM_CONTACT_URL=https://api.whatsapp.com/send/?phone=593123456789
+BREVOCUSTOM_REORDER_URL_PATTERN={shop_url}/pedido?submitReorder=1&id_order={id_order}
 ```
 
 ## Servicio sugerido

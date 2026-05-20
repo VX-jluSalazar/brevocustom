@@ -60,15 +60,15 @@ Convenciones sugeridas:
 
 ## URLs base sugeridas
 
-- URL base de tienda: `https://farmagro.desarrollovelox.com`
-- Link para agregar review: `https://farmagro.desarrollovelox.com/shop-reviews-add`
-- URL de contacto WhatsApp: `https://api.whatsapp.com/send/?phone=593959212641&text=%C2%A1Hola%21+Necesito+informaci%C3%B3n+sobre%3A+&type=phone_number&app_absent=0`
+- URL base de tienda: se obtiene desde PrestaShop con la URL base de la tienda actual.
+- Link para agregar review: `{shop_url}/shop-reviews-add`
+- URL de contacto WhatsApp: `https://api.whatsapp.com/send/?phone=593123456789`
 - URL para hacer el pedido de nuevo:
 
 Patron para `reorder_url`:
 
 ```text
-https://farmagro.desarrollovelox.com/pedido?submitReorder=1&id_order={id_order}
+{shop_url}/pedido?submitReorder=1&id_order={id_order}
 ```
 
 ## Estados de orden PrestaShop

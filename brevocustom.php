@@ -20,6 +20,7 @@ class Brevocustom extends Module
     private const ORDER_STATE_SENT = 4;
     private const ORDER_STATE_DELIVERED = 5;
     private const NEWSLETTER_SUBSCRIPTION = 0;
+    private const LEGACY_DEFAULT_SHOP_URL = 'https://farmagro.desarrollovelox.com';
 
     private const SUBMIT_ACTION = 'submitBrevocustomConfig';
 
@@ -1229,15 +1230,16 @@ class Brevocustom extends Module
 
     private function installDefaultConfiguration(bool $overwrite = true): bool
     {
+        $defaultUrls = $this->getDefaultUrls();
         $defaults = [
             self::CONFIG_ENABLED => 0,
             self::CONFIG_BREVO_API_KEY => '',
             self::CONFIG_DEBUG => 0,
             self::CONFIG_ABANDONED_CART_DELAY_MINUTES => 60,
-            self::CONFIG_SHOP_URL => 'https://farmagro.desarrollovelox.com',
-            self::CONFIG_SHOP_REVIEW_URL => 'https://farmagro.desarrollovelox.com/shop-reviews-add',
-            self::CONFIG_CONTACT_URL => 'https://api.whatsapp.com/send/?phone=593959212641&text=%C2%A1Hola%21+Necesito+informaci%C3%B3n+sobre%3A+&type=phone_number&app_absent=0',
-            self::CONFIG_REORDER_URL_PATTERN => 'https://farmagro.desarrollovelox.com/pedido?submitReorder=1&id_order={id_order}',
+            self::CONFIG_SHOP_URL => $defaultUrls['shop_url'],
+            self::CONFIG_SHOP_REVIEW_URL => $defaultUrls['shop_review_url'],
+            self::CONFIG_CONTACT_URL => $defaultUrls['contact_url'],
+            self::CONFIG_REORDER_URL_PATTERN => $defaultUrls['reorder_url_pattern'],
             self::CONFIG_CUSTOM_URLS => '[]',
             self::CONFIG_CRON_TOKEN => Tools::passwdGen(32),
         ];
@@ -1248,6 +1250,10 @@ class Brevocustom extends Module
                     return false;
                 }
             }
+        }
+
+        if (!$overwrite) {
+            $this->migrateLegacyDefaultUrls($defaultUrls);
         }
 
         return true;
@@ -1325,6 +1331,72 @@ class Brevocustom extends Module
         Configuration::updateValue(self::CONFIG_CUSTOM_URLS, json_encode($customUrls));
 
         return $this->displayConfirmation($this->trans('Configuration saved.', [], 'Modules.Brevocustom.Admin'));
+    }
+
+    private function getDefaultUrls(): array
+    {
+        $shopUrl = $this->getDefaultShopUrl();
+
+        return [
+            'shop_url' => $shopUrl,
+            'shop_review_url' => $shopUrl . '/shop-reviews-add',
+            'contact_url' => 'https://api.whatsapp.com/send/?phone=593123456789',
+            'reorder_url_pattern' => $shopUrl . '/pedido?submitReorder=1&id_order={id_order}',
+        ];
+    }
+
+    private function getDefaultShopUrl(): string
+    {
+        if (isset($this->context->link) && $this->context->link instanceof Link) {
+            $shopId = isset($this->context->shop) ? (int) $this->context->shop->id : null;
+            $baseLink = rtrim($this->context->link->getBaseLink($shopId, true), '/');
+            if ($this->isValidUrl($baseLink)) {
+                return $baseLink;
+            }
+        }
+
+        if (isset($this->context->shop) && Validate::isLoadedObject($this->context->shop)) {
+            $domain = (string) ($this->context->shop->domain_ssl ?: $this->context->shop->domain);
+            $baseUri = rtrim((string) $this->context->shop->getBaseURI(), '/');
+            $shopUrl = rtrim('https://' . $domain . $baseUri, '/');
+            if ($this->isValidUrl($shopUrl)) {
+                return $shopUrl;
+            }
+        }
+
+        return self::LEGACY_DEFAULT_SHOP_URL;
+    }
+
+    private function migrateLegacyDefaultUrls(array $defaultUrls): void
+    {
+        $legacyDefaults = [
+            self::CONFIG_SHOP_URL => [
+                self::LEGACY_DEFAULT_SHOP_URL,
+            ],
+            self::CONFIG_SHOP_REVIEW_URL => [
+                self::LEGACY_DEFAULT_SHOP_URL . '/shop-reviews-add',
+            ],
+            self::CONFIG_CONTACT_URL => [
+                'https://api.whatsapp.com/send/?phone=593959212641',
+                'https://api.whatsapp.com/send/?phone=593959212641&text=%C2%A1Hola%21+Necesito+informaci%C3%B3n+sobre%3A+&type=phone_number&app_absent=0',
+            ],
+            self::CONFIG_REORDER_URL_PATTERN => [
+                self::LEGACY_DEFAULT_SHOP_URL . '/pedido?submitReorder=1&id_order={id_order}',
+            ],
+        ];
+
+        $newDefaults = [
+            self::CONFIG_SHOP_URL => $defaultUrls['shop_url'],
+            self::CONFIG_SHOP_REVIEW_URL => $defaultUrls['shop_review_url'],
+            self::CONFIG_CONTACT_URL => $defaultUrls['contact_url'],
+            self::CONFIG_REORDER_URL_PATTERN => $defaultUrls['reorder_url_pattern'],
+        ];
+
+        foreach ($legacyDefaults as $key => $legacyValues) {
+            if (in_array((string) Configuration::get($key), $legacyValues, true)) {
+                Configuration::updateValue($key, $newDefaults[$key]);
+            }
+        }
     }
 
     private function getConfigurationValues(): array
