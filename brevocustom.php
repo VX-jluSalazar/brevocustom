@@ -14,6 +14,7 @@ class Brevocustom extends Module
     public const CONFIG_SHOP_REVIEW_URL = 'BREVOCUSTOM_SHOP_REVIEW_URL';
     public const CONFIG_CONTACT_URL = 'BREVOCUSTOM_CONTACT_URL';
     public const CONFIG_REORDER_URL_PATTERN = 'BREVOCUSTOM_REORDER_URL_PATTERN';
+    public const CONFIG_CUSTOM_URLS = 'BREVOCUSTOM_CUSTOM_URLS';
     public const CONFIG_CRON_TOKEN = 'BREVOCUSTOM_CRON_TOKEN';
 
     private const ORDER_STATE_SENT = 4;
@@ -112,6 +113,7 @@ class Brevocustom extends Module
                 . '&configure=' . $this->name
                 . '&token=' . Tools::getAdminTokenLite('AdminModules'),
             'brevocustom_values' => $this->getConfigurationValues(),
+            'brevocustom_custom_urls' => $this->getCustomUrlItems(),
             'brevocustom_submit_name' => self::SUBMIT_ACTION,
             'brevocustom_status' => $this->getStatusSummary(),
             'brevocustom_recent_logs' => $this->getRecentLogs(),
@@ -412,6 +414,20 @@ class Brevocustom extends Module
                 'PS_CUSTOMER_ID' => (int) $customer->id,
             ],
             'event_properties' => [
+                'customer' => $this->buildCustomerGroupPayload($customer),
+                'order' => $this->buildOrderGroupPayload($order, $orderState, $currency, $products, [
+                    'date' => $orderDate,
+                    'date_formatted' => $orderDateFormatted,
+                ]),
+                'shipping' => $this->buildShippingGroupPayload($address, $carrier, $idLang),
+                'payment' => $this->buildPaymentGroupPayload($order, $paymentMethodId),
+                'reviews' => $shopReviews,
+                'main_categories' => [],
+                'misc' => $this->buildMiscGroupPayload([
+                    'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
+                    'reorder_url' => $reorderUrl,
+                    'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
+                ]),
                 'order_id' => (int) $order->id,
                 'order_reference' => (string) $order->reference,
                 'order_date' => $orderDate,
@@ -490,6 +506,7 @@ class Brevocustom extends Module
         $eventDate = date(DATE_ATOM);
         $orderDate = $this->formatDateForBrevo($order->date_add ?: date('Y-m-d H:i:s'));
         $orderDateFormatted = $this->formatCalendarDate((string) $order->date_add);
+        $shopReviews = (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5);
         $reorderUrl = str_replace(
             '{id_order}',
             (string) (int) $order->id,
@@ -521,6 +538,25 @@ class Brevocustom extends Module
             ],
             'contact_properties' => $contactProperties,
             'event_properties' => [
+                'customer' => $this->buildCustomerGroupPayload($customer),
+                'order' => $this->buildOrderGroupPayload($order, $orderState, $currency, $products, [
+                    'date' => $orderDate,
+                    'date_formatted' => $orderDateFormatted,
+                    $eventDateProperty => $eventDate,
+                ]),
+                'shipping' => $this->buildShippingGroupPayload(null, $carrier, $idLang, [
+                    'tracking_code' => $trackingCode,
+                    'tracking_url' => $trackingUrl,
+                    'servientrega' => $servientrega ?: [],
+                ]),
+                'payment' => $this->buildPaymentGroupPayload($order, $paymentMethodId),
+                'reviews' => $shopReviews,
+                'main_categories' => [],
+                'misc' => $this->buildMiscGroupPayload([
+                    'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
+                    'reorder_url' => $reorderUrl,
+                    'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
+                ]),
                 'order_id' => (int) $order->id,
                 'order_reference' => (string) $order->reference,
                 'order_date' => $orderDate,
@@ -561,7 +597,7 @@ class Brevocustom extends Module
                     array_values(array_unique($excludedProductIds)),
                     3
                 ),
-                'shop_reviews' => (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5),
+                'shop_reviews' => $shopReviews,
                 'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
                 'reorder_url' => $reorderUrl,
                 'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
@@ -575,6 +611,8 @@ class Brevocustom extends Module
         $idShop = (int) $this->context->shop->id;
         $subscribedAt = date(DATE_ATOM);
         $source = !empty($hookParams['hookName']) ? (string) $hookParams['hookName'] : 'ps_emailsubscription';
+        $shopReviews = (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5);
+        $mainCategories = $this->getMainCategories((int) $this->context->language->id, $idShop);
 
         return [
             'event_name' => 'vx_subscriber',
@@ -594,13 +632,19 @@ class Brevocustom extends Module
                 'SUBSCRIPTION_SOURCE' => $source,
             ],
             'event_properties' => [
+                'customer' => $this->buildCustomerGroupPayload($customer, $email),
+                'reviews' => $shopReviews,
+                'main_categories' => $mainCategories,
+                'misc' => $this->buildMiscGroupPayload([
+                    'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
+                ]),
                 'email' => $email,
                 'customer_id' => Validate::isLoadedObject($customer) ? (int) $customer->id : null,
                 'is_customer' => Validate::isLoadedObject($customer),
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
                 'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
-                'shop_reviews' => (new BrevoShopReviewsProvider())->getLatestApprovedReviews($idShop, 5),
-                'main_categories' => $this->getMainCategories((int) $this->context->language->id, $idShop),
+                'shop_reviews' => $shopReviews,
+                'main_categories' => $mainCategories,
             ],
         ];
     }
@@ -659,6 +703,27 @@ class Brevocustom extends Module
                 'LAST_ABANDONED_CART_DATE' => $eventDate,
             ],
             'event_properties' => [
+                'customer' => $this->buildCustomerGroupPayload($customer),
+                'cart' => $this->buildCartGroupPayload($cart, $products, $cartUpdatedAt, [
+                    'total_tax_incl' => $cartTotalTaxIncl,
+                    'total_tax_excl' => $cartTotalTaxExcl,
+                    'products_tax_incl' => $cartProductsTotalTaxIncl,
+                    'products_tax_excl' => $cartProductsTotalTaxExcl,
+                    'shipping_tax_incl' => $cartShippingTotalTaxIncl,
+                    'shipping_tax_excl' => $cartShippingTotalTaxExcl,
+                    'discounts_tax_incl' => $cartDiscountsTotalTaxIncl,
+                    'discounts_tax_excl' => $cartDiscountsTotalTaxExcl,
+                ], $idLang),
+                'shipping' => [
+                    'carrier' => [],
+                ],
+                'payment' => [],
+                'reviews' => [],
+                'main_categories' => [],
+                'misc' => $this->buildMiscGroupPayload([
+                    'cart_url' => $this->context->link->getPageLink('cart', true, $idLang, ['action' => 'show']),
+                    'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
+                ]),
                 'cart_id' => (int) $cart->id,
                 'customer_id' => (int) $customer->id,
                 'customer_email' => (string) $customer->email,
@@ -733,6 +798,7 @@ class Brevocustom extends Module
                 'tax_name' => (string) ($cartProduct['tax_name'] ?? ''),
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $this->getProductImageUrl($product, $idProduct, $idProductAttribute),
+                'attributes' => $this->getProductAttributes($idProduct, $idProductAttribute),
             ];
         }
 
@@ -809,6 +875,137 @@ class Brevocustom extends Module
             'country' => Validate::isLoadedObject($country) ? (string) $country->name : '',
             'phone' => (string) ($address->phone_mobile ?: $address->phone),
         ];
+    }
+
+    private function buildCustomerGroupPayload(Customer $customer, string $emailFallback = ''): array
+    {
+        $isCustomer = Validate::isLoadedObject($customer);
+
+        return [
+            'id' => $isCustomer ? (int) $customer->id : null,
+            'email' => $isCustomer ? (string) $customer->email : $emailFallback,
+            'firstname' => $isCustomer ? (string) $customer->firstname : '',
+            'lastname' => $isCustomer ? (string) $customer->lastname : '',
+            'is_customer' => $isCustomer,
+        ];
+    }
+
+    private function buildOrderGroupPayload(Order $order, OrderState $orderState, Currency $currency, array $items, array $dates = []): array
+    {
+        $orderPayload = [
+            'id' => (int) $order->id,
+            'reference' => (string) $order->reference,
+            'date' => (string) ($dates['date'] ?? ''),
+            'date_formatted' => (string) ($dates['date_formatted'] ?? ''),
+            'status' => Validate::isLoadedObject($orderState) ? (string) $orderState->name : '',
+            'status_id' => (int) $order->current_state,
+            'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
+            'totals' => [
+                'paid' => (float) $order->total_paid,
+                'paid_tax_incl' => (float) $order->total_paid_tax_incl,
+                'paid_tax_excl' => (float) $order->total_paid_tax_excl,
+                'tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
+                'products' => (float) $order->total_products,
+                'products_tax_incl' => (float) $order->total_products_wt,
+                'products_tax_excl' => (float) $order->total_products,
+                'products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
+                'shipping' => (float) $order->total_shipping,
+                'shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
+                'shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
+                'shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
+                'discounts' => (float) $order->total_discounts,
+                'discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
+                'discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
+                'discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
+            ],
+            'items' => $items,
+        ];
+
+        if (!empty($dates['sent_at'])) {
+            $orderPayload['sent_at'] = (string) $dates['sent_at'];
+        }
+        if (!empty($dates['delivered_at'])) {
+            $orderPayload['delivered_at'] = (string) $dates['delivered_at'];
+        }
+
+        return $orderPayload;
+    }
+
+    private function buildCartGroupPayload(Cart $cart, array $items, string $cartUpdatedAt, array $totals, int $idLang): array
+    {
+        $totalTaxIncl = (float) ($totals['total_tax_incl'] ?? 0);
+        $totalTaxExcl = (float) ($totals['total_tax_excl'] ?? 0);
+        $productsTaxIncl = (float) ($totals['products_tax_incl'] ?? 0);
+        $productsTaxExcl = (float) ($totals['products_tax_excl'] ?? 0);
+        $shippingTaxIncl = (float) ($totals['shipping_tax_incl'] ?? 0);
+        $shippingTaxExcl = (float) ($totals['shipping_tax_excl'] ?? 0);
+        $discountsTaxIncl = (float) ($totals['discounts_tax_incl'] ?? 0);
+        $discountsTaxExcl = (float) ($totals['discounts_tax_excl'] ?? 0);
+
+        return [
+            'id' => (int) $cart->id,
+            'updated_at' => $cartUpdatedAt,
+            'abandoned_minutes' => (int) floor((time() - strtotime((string) $cart->date_upd)) / 60),
+            'url' => $this->context->link->getPageLink('cart', true, $idLang, ['action' => 'show']),
+            'totals' => [
+                'total' => $totalTaxIncl,
+                'total_tax_incl' => $totalTaxIncl,
+                'total_tax_excl' => $totalTaxExcl,
+                'total_tax_amount' => $totalTaxIncl - $totalTaxExcl,
+                'products' => $productsTaxIncl,
+                'products_tax_incl' => $productsTaxIncl,
+                'products_tax_excl' => $productsTaxExcl,
+                'products_tax_amount' => $productsTaxIncl - $productsTaxExcl,
+                'shipping' => $shippingTaxIncl,
+                'shipping_tax_incl' => $shippingTaxIncl,
+                'shipping_tax_excl' => $shippingTaxExcl,
+                'shipping_tax_amount' => $shippingTaxIncl - $shippingTaxExcl,
+                'discounts' => $discountsTaxIncl,
+                'discounts_tax_incl' => $discountsTaxIncl,
+                'discounts_tax_excl' => $discountsTaxExcl,
+                'discounts_tax_amount' => $discountsTaxIncl - $discountsTaxExcl,
+            ],
+            'items' => $items,
+        ];
+    }
+
+    private function buildShippingGroupPayload(?Address $address, Carrier $carrier, int $idLang, array $tracking = []): array
+    {
+        return [
+            'address' => $address instanceof Address ? $this->buildAddressPayload($address, $idLang) : [],
+            'carrier' => [
+                'id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id : 0,
+                'reference_id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0,
+                'name' => Validate::isLoadedObject($carrier) ? (string) $carrier->name : '',
+            ],
+            'tracking_code' => (string) ($tracking['tracking_code'] ?? ''),
+            'tracking_url' => (string) ($tracking['tracking_url'] ?? ''),
+            'servientrega' => $tracking['servientrega'] ?? [],
+        ];
+    }
+
+    private function buildPaymentGroupPayload(Order $order, int $paymentMethodId): array
+    {
+        return [
+            'method_id' => $paymentMethodId,
+            'method' => (string) $order->payment,
+            'module' => (string) $order->module,
+        ];
+    }
+
+    private function buildMiscGroupPayload(array $urls = []): array
+    {
+        $misc = array_merge([
+            'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
+        ], $urls);
+
+        foreach ($this->getCustomUrlsForPayload() as $key => $url) {
+            if (!array_key_exists($key, $misc)) {
+                $misc[$key] = $url;
+            }
+        }
+
+        return $misc;
     }
 
     private function getCategoryName(int $idCategory, int $idLang): string
@@ -1041,6 +1238,7 @@ class Brevocustom extends Module
             self::CONFIG_SHOP_REVIEW_URL => 'https://farmagro.desarrollovelox.com/shop-reviews-add',
             self::CONFIG_CONTACT_URL => 'https://api.whatsapp.com/send/?phone=593959212641&text=%C2%A1Hola%21+Necesito+informaci%C3%B3n+sobre%3A+&type=phone_number&app_absent=0',
             self::CONFIG_REORDER_URL_PATTERN => 'https://farmagro.desarrollovelox.com/pedido?submitReorder=1&id_order={id_order}',
+            self::CONFIG_CUSTOM_URLS => '[]',
             self::CONFIG_CRON_TOKEN => Tools::passwdGen(32),
         ];
 
@@ -1066,6 +1264,7 @@ class Brevocustom extends Module
             self::CONFIG_SHOP_REVIEW_URL,
             self::CONFIG_CONTACT_URL,
             self::CONFIG_REORDER_URL_PATTERN,
+            self::CONFIG_CUSTOM_URLS,
             self::CONFIG_CRON_TOKEN,
         ];
 
@@ -1086,8 +1285,8 @@ class Brevocustom extends Module
         $shopReviewUrl = trim((string) Tools::getValue(self::CONFIG_SHOP_REVIEW_URL, ''));
         $contactUrl = trim((string) Tools::getValue(self::CONFIG_CONTACT_URL, ''));
         $reorderUrlPattern = trim((string) Tools::getValue(self::CONFIG_REORDER_URL_PATTERN, ''));
-
         $errors = [];
+        $customUrls = $this->parseCustomUrlItemsFromRequest($errors);
 
         if ($enabled && $apiKey === '') {
             $errors[] = $this->trans('Brevo API key is required when the integration is enabled.', [], 'Modules.Brevocustom.Admin');
@@ -1123,6 +1322,7 @@ class Brevocustom extends Module
         Configuration::updateValue(self::CONFIG_SHOP_REVIEW_URL, $shopReviewUrl);
         Configuration::updateValue(self::CONFIG_CONTACT_URL, $contactUrl);
         Configuration::updateValue(self::CONFIG_REORDER_URL_PATTERN, $reorderUrlPattern);
+        Configuration::updateValue(self::CONFIG_CUSTOM_URLS, json_encode($customUrls));
 
         return $this->displayConfirmation($this->trans('Configuration saved.', [], 'Modules.Brevocustom.Admin'));
     }
@@ -1138,6 +1338,102 @@ class Brevocustom extends Module
             self::CONFIG_SHOP_REVIEW_URL => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
             self::CONFIG_CONTACT_URL => (string) Configuration::get(self::CONFIG_CONTACT_URL),
             self::CONFIG_REORDER_URL_PATTERN => (string) Configuration::get(self::CONFIG_REORDER_URL_PATTERN),
+            self::CONFIG_CUSTOM_URLS => (string) Configuration::get(self::CONFIG_CUSTOM_URLS),
+        ];
+    }
+
+    private function parseCustomUrlItemsFromRequest(array &$errors): array
+    {
+        $keys = Tools::getValue('custom_url_key', []);
+        $labels = Tools::getValue('custom_url_label', []);
+        $urls = Tools::getValue('custom_url_value', []);
+
+        if (!is_array($keys) || !is_array($labels) || !is_array($urls)) {
+            return [];
+        }
+
+        $reservedKeys = $this->getReservedMiscUrlKeys();
+        $seenKeys = [];
+        $items = [];
+
+        foreach ($keys as $index => $rawKey) {
+            $rawUrl = isset($urls[$index]) ? trim((string) $urls[$index]) : '';
+            $rawLabel = isset($labels[$index]) ? trim((string) $labels[$index]) : '';
+            $key = $this->normalizeIdentifier((string) $rawKey);
+
+            if ($key === '' && $rawUrl === '' && $rawLabel === '') {
+                continue;
+            }
+
+            if ($key === '') {
+                $errors[] = $this->trans('Custom URL key is required.', [], 'Modules.Brevocustom.Admin');
+                continue;
+            }
+
+            if (in_array($key, $reservedKeys, true)) {
+                $errors[] = sprintf('%s: %s', $key, $this->trans('Custom URL key is reserved.', [], 'Modules.Brevocustom.Admin'));
+                continue;
+            }
+
+            if (isset($seenKeys[$key])) {
+                $errors[] = sprintf('%s: %s', $key, $this->trans('Custom URL key is duplicated.', [], 'Modules.Brevocustom.Admin'));
+                continue;
+            }
+
+            if (!$this->isValidUrl($rawUrl)) {
+                $errors[] = sprintf('%s: %s', $key, $this->trans('Invalid URL.', [], 'Modules.Brevocustom.Admin'));
+                continue;
+            }
+
+            $seenKeys[$key] = true;
+            $items[] = [
+                'key' => $key,
+                'label' => $rawLabel,
+                'url' => $rawUrl,
+            ];
+        }
+
+        return $items;
+    }
+
+    private function getCustomUrlItems(): array
+    {
+        $json = (string) Configuration::get(self::CONFIG_CUSTOM_URLS);
+        $items = json_decode($json, true);
+
+        if (!is_array($items)) {
+            return [];
+        }
+
+        return array_values(array_filter($items, function ($item): bool {
+            return is_array($item)
+                && !empty($item['key'])
+                && !empty($item['url']);
+        }));
+    }
+
+    private function getCustomUrlsForPayload(): array
+    {
+        $urls = [];
+        foreach ($this->getCustomUrlItems() as $item) {
+            $key = $this->normalizeIdentifier((string) $item['key']);
+            $url = trim((string) $item['url']);
+            if ($key !== '' && !in_array($key, $this->getReservedMiscUrlKeys(), true) && $this->isValidUrl($url)) {
+                $urls[$key] = $url;
+            }
+        }
+
+        return $urls;
+    }
+
+    private function getReservedMiscUrlKeys(): array
+    {
+        return [
+            'shop_url',
+            'shop_review_url',
+            'contact_url',
+            'reorder_url',
+            'cart_url',
         ];
     }
 

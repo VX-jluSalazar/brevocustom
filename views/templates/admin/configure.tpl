@@ -101,6 +101,53 @@
         <input id="BREVOCUSTOM_REORDER_URL_PATTERN" type="text" name="BREVOCUSTOM_REORDER_URL_PATTERN" value="{$brevocustom_values.BREVOCUSTOM_REORDER_URL_PATTERN|escape:'html':'UTF-8'}">
         <small>Debe incluir el token `{ldelim}id_order{rdelim}` para construir la URL por pedido.</small>
       </div>
+
+      <div class="brevocustom-custom-urls" data-brevocustom-custom-urls>
+        <div class="brevocustom-section-head">
+          <h3>URLs custom</h3>
+          <p>Se agregan directamente como atributos dentro de `misc` usando la key configurada.</p>
+        </div>
+
+        <div class="brevocustom-custom-url-list" data-brevocustom-custom-url-list>
+          {foreach from=$brevocustom_custom_urls item=custom_url}
+            <div class="brevocustom-custom-url-row" data-brevocustom-custom-url-row>
+              <div class="brevocustom-field">
+                <label>key</label>
+                <input type="text" name="custom_url_key[]" value="{$custom_url.key|escape:'html':'UTF-8'}" placeholder="faq_url">
+              </div>
+              <div class="brevocustom-field">
+                <label>label</label>
+                <input type="text" name="custom_url_label[]" value="{$custom_url.label|escape:'html':'UTF-8'}" placeholder="Preguntas frecuentes">
+              </div>
+              <div class="brevocustom-field">
+                <label>url</label>
+                <input type="url" name="custom_url_value[]" value="{$custom_url.url|escape:'html':'UTF-8'}" placeholder="https://tienda.com/faq">
+              </div>
+              <button type="button" class="brevocustom-icon-button" data-brevocustom-remove-url aria-label="Eliminar URL">x</button>
+            </div>
+          {/foreach}
+        </div>
+
+        <button type="button" class="brevocustom-secondary-button" data-brevocustom-add-url>Agregar URL</button>
+
+        <template data-brevocustom-custom-url-template>
+          <div class="brevocustom-custom-url-row" data-brevocustom-custom-url-row>
+            <div class="brevocustom-field">
+              <label>key</label>
+              <input type="text" name="custom_url_key[]" value="" placeholder="faq_url">
+            </div>
+            <div class="brevocustom-field">
+              <label>label</label>
+              <input type="text" name="custom_url_label[]" value="" placeholder="Preguntas frecuentes">
+            </div>
+            <div class="brevocustom-field">
+              <label>url</label>
+              <input type="url" name="custom_url_value[]" value="" placeholder="https://tienda.com/faq">
+            </div>
+            <button type="button" class="brevocustom-icon-button" data-brevocustom-remove-url aria-label="Eliminar URL">x</button>
+          </div>
+        </template>
+      </div>
     </div>
 
     <div class="brevocustom-panel" data-brevocustom-panel="automation">

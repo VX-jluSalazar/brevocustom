@@ -17,6 +17,8 @@ Implementado en `modules/brevocustom/brevocustom.php` mediante el hook `actionNe
 
 ## Payload recomendado
 
+Nota: el payload implementado actualmente usa la estructura agrupada documentada en `PAYLOADS_EVENTOS.md` (`customer`, `reviews`, `main_categories`, `misc`). El ejemplo plano siguiente queda como referencia historica y compatibilidad temporal.
+
 ```json
 {
   "event_name": "vx_subscriber",

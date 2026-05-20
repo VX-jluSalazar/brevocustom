@@ -26,6 +26,8 @@ La URL se muestra en la pestaña `Automatizacion` de la configuracion del modulo
 
 ## Payload recomendado
 
+Nota: el payload implementado actualmente usa la estructura agrupada documentada en `PAYLOADS_EVENTOS.md` (`customer`, `cart.items`, `shipping.carrier`, `payment`, `reviews`, `main_categories`, `misc`). El ejemplo plano siguiente queda como referencia historica y compatibilidad temporal.
+
 ```json
 {
   "event_name": "vx_abandoned_cart",

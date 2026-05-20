@@ -18,6 +18,8 @@ Implementado en `modules/brevocustom/brevocustom.php` mediante el hook `actionOr
 
 ## Payload recomendado
 
+Nota: el payload implementado actualmente usa la estructura agrupada documentada en `PAYLOADS_EVENTOS.md` (`customer`, `order.items`, `shipping.carrier`, `payment`, `reviews`, `main_categories`, `misc`). El ejemplo plano siguiente queda como referencia historica y compatibilidad temporal.
+
 ```json
 {
   "event_name": "vx_order_delivered",

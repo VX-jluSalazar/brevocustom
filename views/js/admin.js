@@ -36,12 +36,34 @@
 
     root.addEventListener('click', function (event) {
       var tab = event.target.closest('[data-brevocustom-tab]');
-      if (!tab || !root.contains(tab)) {
+      var addUrlButton = event.target.closest('[data-brevocustom-add-url]');
+      var removeUrlButton = event.target.closest('[data-brevocustom-remove-url]');
+
+      if (tab && root.contains(tab)) {
+        event.preventDefault();
+        activate(tab.getAttribute('data-brevocustom-tab'));
         return;
       }
 
-      event.preventDefault();
-      activate(tab.getAttribute('data-brevocustom-tab'));
+      if (addUrlButton && root.contains(addUrlButton)) {
+        var customUrlsRoot = root.querySelector('[data-brevocustom-custom-urls]');
+        var list = root.querySelector('[data-brevocustom-custom-url-list]');
+        var template = root.querySelector('[data-brevocustom-custom-url-template]');
+
+        if (customUrlsRoot && list && template && template.content) {
+          event.preventDefault();
+          list.appendChild(template.content.cloneNode(true));
+        }
+        return;
+      }
+
+      if (removeUrlButton && root.contains(removeUrlButton)) {
+        var row = removeUrlButton.closest('[data-brevocustom-custom-url-row]');
+        if (row) {
+          event.preventDefault();
+          row.parentNode.removeChild(row);
+        }
+      }
     });
 
     try {

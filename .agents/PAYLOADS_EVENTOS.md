@@ -15,7 +15,18 @@ Todos los eventos enviados a Brevo usan:
     "ext_id": "ps_customer_123"
   },
   "contact_properties": {},
-  "event_properties": {}
+  "event_properties": {
+    "customer": {},
+    "order": {},
+    "cart": {},
+    "shipping": {
+      "carrier": {}
+    },
+    "payment": {},
+    "reviews": [],
+    "main_categories": [],
+    "misc": {}
+  }
 }
 ```
 
@@ -23,76 +34,77 @@ Notas:
 
 - No se envia `object` a Brevo.
 - Los campos internos `_log_object_type` y `_log_object_id` solo se usan para trazabilidad local y el cliente HTTP los elimina antes del request.
-- Las fechas ISO usan `DATE_ATOM`.
-- Los totales historicos (`total_paid`, `cart_total`, `unit_price`, `total_price`) se mantienen con impuestos incluidos para no romper plantillas existentes.
+- Los eventos de orden y carrito mantienen algunos campos planos como compatibilidad temporal: `order_id`, `products`, `shop_url`, `contact_url`, etc.
+- Las URLs custom configuradas desde Back Office se agregan directamente como atributos planos dentro de `misc`.
 
 ## vx_order_created
 
 Se dispara cuando se crea una orden.
 
-`identifiers`:
+`event_properties` agrupado:
 
 ```json
 {
-  "email_id": "cliente@dominio.com",
-  "ext_id": "ps_customer_123"
-}
-```
-
-`contact_properties`:
-
-```json
-{
-  "FIRSTNAME": "Juan",
-  "LASTNAME": "Perez",
-  "PS_CUSTOMER_ID": 123
-}
-```
-
-`event_properties`:
-
-```json
-{
-  "order_id": 456,
-  "order_reference": "ABC123",
-  "order_date": "2026-05-20T10:30:00-05:00",
-  "order_date_formatted": "20 mayo, 2026",
-  "order_status": "Pago aceptado",
-  "order_status_id": 2,
-  "shop_url": "https://tienda.com",
-  "currency": "USD",
-  "total_paid": 35.5,
-  "total_paid_tax_incl": 35.5,
-  "total_paid_tax_excl": 31.7,
-  "total_tax_amount": 3.8,
-  "total_products": 28.0,
-  "total_products_tax_incl": 31.36,
-  "total_products_tax_excl": 28.0,
-  "total_products_tax_amount": 3.36,
-  "total_shipping": 4.14,
-  "total_shipping_tax_incl": 4.14,
-  "total_shipping_tax_excl": 3.7,
-  "total_shipping_tax_amount": 0.44,
-  "total_discounts": 0.0,
-  "total_discounts_tax_incl": 0.0,
-  "total_discounts_tax_excl": 0.0,
-  "total_discounts_tax_amount": 0.0,
-  "payment_method_id": 12,
-  "payment_method": "Transferencia bancaria",
-  "payment_module": "ps_wirepayment",
-  "carrier_id": 4,
-  "carrier_reference_id": 2,
-  "carrier_name": "Servientrega",
-  "customer_email": "cliente@dominio.com",
-  "customer_firstname": "Juan",
-  "customer_lastname": "Perez",
-  "shipping_address": {},
-  "products": [],
-  "related_products": [],
-  "shop_reviews": [],
-  "shop_review_url": "https://tienda.com/shop-reviews-add",
-  "reorder_url": "https://tienda.com/...",
-  "contact_url": "https://tienda.com/contacto"
+  "customer": {
+    "id": 123,
+    "email": "cliente@dominio.com",
+    "firstname": "Juan",
+    "lastname": "Perez",
+    "is_customer": true
+  },
+  "order": {
+    "id": 456,
+    "reference": "ABC123",
+    "date": "2026-05-20T10:30:00-05:00",
+    "date_formatted": "20 mayo, 2026",
+    "status": "Pago aceptado",
+    "status_id": 2,
+    "currency": "USD",
+    "totals": {
+      "paid": 35.5,
+      "paid_tax_incl": 35.5,
+      "paid_tax_excl": 31.7,
+      "tax_amount": 3.8,
+      "products": 28.0,
+      "products_tax_incl": 31.36,
+      "products_tax_excl": 28.0,
+      "products_tax_amount": 3.36,
+      "shipping": 4.14,
+      "shipping_tax_incl": 4.14,
+      "shipping_tax_excl": 3.7,
+      "shipping_tax_amount": 0.44,
+      "discounts": 0.0,
+      "discounts_tax_incl": 0.0,
+      "discounts_tax_excl": 0.0,
+      "discounts_tax_amount": 0.0
+    },
+    "items": []
+  },
+  "shipping": {
+    "address": {},
+    "carrier": {
+      "id": 4,
+      "reference_id": 2,
+      "name": "Servientrega"
+    },
+    "tracking_code": "",
+    "tracking_url": "",
+    "servientrega": []
+  },
+  "payment": {
+    "method_id": 12,
+    "method": "Transferencia bancaria",
+    "module": "ps_wirepayment"
+  },
+  "reviews": [],
+  "main_categories": [],
+  "misc": {
+    "shop_url": "https://tienda.com",
+    "shop_review_url": "https://tienda.com/shop-reviews-add",
+    "reorder_url": "https://tienda.com/reorder/456",
+    "contact_url": "https://tienda.com/contacto",
+    "faq_url": "https://tienda.com/faq"
+  }
 }
 ```
 
@@ -100,18 +112,22 @@ Se dispara cuando se crea una orden.
 
 Se dispara cuando la orden cambia al estado configurado como enviada.
 
-Tiene la misma base de `vx_order_created`, pero agrega datos de tracking y fecha de envio:
+Usa la misma estructura agrupada de `vx_order_created`, con estos campos adicionales:
 
 ```json
 {
-  "tracking_code": "GUIA-123456789",
-  "tracking_url": "https://www.servientrega.com.ec/rastreo",
-  "servientrega": {},
-  "sent_at": "2026-05-20T10:30:00-05:00"
+  "order": {
+    "sent_at": "2026-05-20T10:30:00-05:00"
+  },
+  "shipping": {
+    "tracking_code": "GUIA-123456789",
+    "tracking_url": "https://www.servientrega.com.ec/rastreo",
+    "servientrega": {}
+  }
 }
 ```
 
-`contact_properties` tambien agrega:
+`contact_properties` agrega:
 
 ```json
 {
@@ -124,11 +140,13 @@ Tiene la misma base de `vx_order_created`, pero agrega datos de tracking y fecha
 
 Se dispara cuando la orden cambia al estado configurado como entregada.
 
-Tiene la misma base de `vx_order_sent`, pero la fecha dinamica es:
+Usa la misma estructura agrupada de `vx_order_sent`, con:
 
 ```json
 {
-  "delivered_at": "2026-05-20T10:30:00-05:00"
+  "order": {
+    "delivered_at": "2026-05-20T10:30:00-05:00"
+  }
 }
 ```
 
@@ -145,12 +163,22 @@ Tiene la misma base de `vx_order_sent`, pero la fecha dinamica es:
 
 Se dispara cuando un email se suscribe al newsletter.
 
-`identifiers`:
-
 ```json
 {
-  "email_id": "cliente@dominio.com",
-  "ext_id": "newsletter_cliente_dominio_com"
+  "customer": {
+    "id": 123,
+    "email": "cliente@dominio.com",
+    "firstname": "Juan",
+    "lastname": "Perez",
+    "is_customer": true
+  },
+  "reviews": [],
+  "main_categories": [],
+  "misc": {
+    "shop_url": "https://tienda.com",
+    "contact_url": "https://tienda.com/contacto",
+    "faq_url": "https://tienda.com/faq"
+  }
 }
 ```
 
@@ -167,73 +195,62 @@ Se dispara cuando un email se suscribe al newsletter.
 }
 ```
 
-`event_properties`:
-
-```json
-{
-  "email": "cliente@dominio.com",
-  "customer_id": 123,
-  "is_customer": true,
-  "shop_url": "https://tienda.com",
-  "contact_url": "https://tienda.com/contacto",
-  "shop_reviews": [],
-  "main_categories": []
-}
-```
-
 ## vx_abandoned_cart
 
 Se dispara desde el cron de carritos abandonados.
 
-`contact_properties`:
-
 ```json
 {
-  "FIRSTNAME": "Juan",
-  "LASTNAME": "Perez",
-  "PS_CUSTOMER_ID": 123,
-  "LAST_ABANDONED_CART_ID": 789,
-  "LAST_ABANDONED_CART_DATE": "2026-05-20T10:30:00-05:00"
-}
-```
-
-`event_properties`:
-
-```json
-{
-  "cart_id": 789,
-  "customer_id": 123,
-  "customer_email": "cliente@dominio.com",
-  "shop_url": "https://tienda.com",
-  "currency": "USD",
-  "cart_total": 35.5,
-  "cart_total_tax_incl": 35.5,
-  "cart_total_tax_excl": 31.7,
-  "cart_total_tax_amount": 3.8,
-  "cart_products_total": 31.36,
-  "cart_products_total_tax_incl": 31.36,
-  "cart_products_total_tax_excl": 28.0,
-  "cart_products_total_tax_amount": 3.36,
-  "cart_shipping_total": 4.14,
-  "cart_shipping_total_tax_incl": 4.14,
-  "cart_shipping_total_tax_excl": 3.7,
-  "cart_shipping_total_tax_amount": 0.44,
-  "cart_discounts_total": 0.0,
-  "cart_discounts_total_tax_incl": 0.0,
-  "cart_discounts_total_tax_excl": 0.0,
-  "cart_discounts_total_tax_amount": 0.0,
-  "cart_updated_at": "2026-05-20T10:30:00-05:00",
-  "abandoned_minutes": 60,
-  "cart_url": "https://tienda.com/cart?action=show",
-  "contact_url": "https://tienda.com/contacto",
-  "products": [],
-  "related_products": []
+  "customer": {
+    "id": 123,
+    "email": "cliente@dominio.com",
+    "firstname": "Juan",
+    "lastname": "Perez",
+    "is_customer": true
+  },
+  "cart": {
+    "id": 789,
+    "updated_at": "2026-05-20T10:30:00-05:00",
+    "abandoned_minutes": 60,
+    "url": "https://tienda.com/cart?action=show",
+    "totals": {
+      "total": 35.5,
+      "total_tax_incl": 35.5,
+      "total_tax_excl": 31.7,
+      "total_tax_amount": 3.8,
+      "products": 31.36,
+      "products_tax_incl": 31.36,
+      "products_tax_excl": 28.0,
+      "products_tax_amount": 3.36,
+      "shipping": 4.14,
+      "shipping_tax_incl": 4.14,
+      "shipping_tax_excl": 3.7,
+      "shipping_tax_amount": 0.44,
+      "discounts": 0.0,
+      "discounts_tax_incl": 0.0,
+      "discounts_tax_excl": 0.0,
+      "discounts_tax_amount": 0.0
+    },
+    "items": []
+  },
+  "shipping": {
+    "carrier": {}
+  },
+  "payment": {},
+  "reviews": [],
+  "main_categories": [],
+  "misc": {
+    "shop_url": "https://tienda.com",
+    "cart_url": "https://tienda.com/cart?action=show",
+    "contact_url": "https://tienda.com/contacto",
+    "faq_url": "https://tienda.com/faq"
+  }
 }
 ```
 
 ## Estructuras reutilizadas
 
-### products en ordenes
+### order.items
 
 ```json
 {
@@ -261,11 +278,11 @@ Se dispara desde el cron de carritos abandonados.
 }
 ```
 
-### products en carrito
+### cart.items
 
-Igual que productos de orden, excepto que no incluye `is_variant` ni `attributes`.
+Igual que `order.items`, excepto que no incluye `is_variant`. Siempre incluye `attributes`.
 
-### shipping_address
+### shipping.address
 
 ```json
 {
@@ -281,7 +298,7 @@ Igual que productos de orden, excepto que no incluye `is_variant` ni `attributes
 }
 ```
 
-### shop_reviews
+### reviews
 
 ```json
 {
