@@ -34,7 +34,7 @@ Notas:
 
 - No se envia `object` a Brevo.
 - Los campos internos `_log_object_type` y `_log_object_id` solo se usan para trazabilidad local y el cliente HTTP los elimina antes del request.
-- Los eventos de orden y carrito mantienen algunos campos planos como compatibilidad temporal: `order_id`, `products`, `shop_url`, `contact_url`, etc.
+- Los duplicados planos definidos en `IMPROVE_PALOAD.md` se eliminaron. `shop_url` se mantiene tanto plano como dentro de `misc`.
 - Las URLs custom configuradas desde Back Office se agregan directamente como atributos planos dentro de `misc`.
 
 ## vx_order_created
@@ -96,7 +96,6 @@ Se dispara cuando se crea una orden.
     "method": "Transferencia bancaria",
     "module": "ps_wirepayment"
   },
-  "reviews": [],
   "main_categories": [],
   "misc": {
     "shop_url": "https://tienda.com",
@@ -104,7 +103,9 @@ Se dispara cuando se crea una orden.
     "reorder_url": "https://tienda.com/reorder/456",
     "contact_url": "https://tienda.com/contacto",
     "faq_url": "https://tienda.com/faq"
-  }
+  },
+  "shop_url": "https://tienda.com",
+  "shop_reviews": []
 }
 ```
 
@@ -172,13 +173,14 @@ Se dispara cuando un email se suscribe al newsletter.
     "lastname": "Perez",
     "is_customer": true
   },
-  "reviews": [],
   "main_categories": [],
   "misc": {
     "shop_url": "https://tienda.com",
     "contact_url": "https://tienda.com/contacto",
     "faq_url": "https://tienda.com/faq"
-  }
+  },
+  "shop_url": "https://tienda.com",
+  "shop_reviews": []
 }
 ```
 

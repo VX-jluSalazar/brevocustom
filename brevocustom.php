@@ -422,53 +422,31 @@ class Brevocustom extends Module
                 ]),
                 'shipping' => $this->buildShippingGroupPayload($address, $carrier, $idLang),
                 'payment' => $this->buildPaymentGroupPayload($order, $paymentMethodId),
-                'reviews' => $shopReviews,
                 'main_categories' => [],
                 'misc' => $this->buildMiscGroupPayload([
                     'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
                     'reorder_url' => $reorderUrl,
                     'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 ]),
-                'order_id' => (int) $order->id,
-                'order_reference' => (string) $order->reference,
-                'order_date' => $orderDate,
-                'order_date_formatted' => $orderDateFormatted,
-                'order_status' => Validate::isLoadedObject($orderState) ? (string) $orderState->name : '',
-                'order_status_id' => (int) $order->current_state,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
-                'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
-                'total_paid' => (float) $order->total_paid,
-                'total_paid_tax_incl' => (float) $order->total_paid_tax_incl,
-                'total_paid_tax_excl' => (float) $order->total_paid_tax_excl,
-                'total_tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
-                'total_products' => (float) $order->total_products,
-                'total_products_tax_incl' => (float) $order->total_products_wt,
-                'total_products_tax_excl' => (float) $order->total_products,
-                'total_products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
-                'total_shipping' => (float) $order->total_shipping,
-                'total_shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
-                'total_shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
-                'total_shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
-                'total_discounts' => (float) $order->total_discounts,
-                'total_discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
-                'total_discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
-                'total_discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
-                'payment_method_id' => $paymentMethodId,
-                'payment_method' => (string) $order->payment,
-                'payment_module' => (string) $order->module,
-                'carrier_id' => (int) $order->id_carrier,
-                'carrier_reference_id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0,
-                'carrier_name' => Validate::isLoadedObject($carrier) ? (string) $carrier->name : '',
-                'customer_email' => (string) $customer->email,
-                'customer_firstname' => (string) $customer->firstname,
-                'customer_lastname' => (string) $customer->lastname,
-                'shipping_address' => $this->buildAddressPayload($address, $idLang),
-                'products' => $products,
+                'total_paid' => $this->roundPayloadAmount($order->total_paid),
+                'total_paid_tax_incl' => $this->roundPayloadAmount($order->total_paid_tax_incl),
+                'total_paid_tax_excl' => $this->roundPayloadAmount($order->total_paid_tax_excl),
+                'total_tax_amount' => $this->subtractPayloadAmounts($order->total_paid_tax_incl, $order->total_paid_tax_excl),
+                'total_products' => $this->roundPayloadAmount($order->total_products),
+                'total_products_tax_incl' => $this->roundPayloadAmount($order->total_products_wt),
+                'total_products_tax_excl' => $this->roundPayloadAmount($order->total_products),
+                'total_products_tax_amount' => $this->subtractPayloadAmounts($order->total_products_wt, $order->total_products),
+                'total_shipping' => $this->roundPayloadAmount($order->total_shipping),
+                'total_shipping_tax_incl' => $this->roundPayloadAmount($order->total_shipping_tax_incl),
+                'total_shipping_tax_excl' => $this->roundPayloadAmount($order->total_shipping_tax_excl),
+                'total_shipping_tax_amount' => $this->subtractPayloadAmounts($order->total_shipping_tax_incl, $order->total_shipping_tax_excl),
+                'total_discounts' => $this->roundPayloadAmount($order->total_discounts),
+                'total_discounts_tax_incl' => $this->roundPayloadAmount($order->total_discounts_tax_incl),
+                'total_discounts_tax_excl' => $this->roundPayloadAmount($order->total_discounts_tax_excl),
+                'total_discounts_tax_amount' => $this->subtractPayloadAmounts($order->total_discounts_tax_incl, $order->total_discounts_tax_excl),
                 'related_products' => $relatedProducts,
                 'shop_reviews' => $shopReviews,
-                'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
-                'reorder_url' => $reorderUrl,
-                'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
             ],
         ];
     }
@@ -551,57 +529,39 @@ class Brevocustom extends Module
                     'servientrega' => $servientrega ?: [],
                 ]),
                 'payment' => $this->buildPaymentGroupPayload($order, $paymentMethodId),
-                'reviews' => $shopReviews,
                 'main_categories' => [],
                 'misc' => $this->buildMiscGroupPayload([
                     'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
                     'reorder_url' => $reorderUrl,
                     'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 ]),
-                'order_id' => (int) $order->id,
-                'order_reference' => (string) $order->reference,
-                'order_date' => $orderDate,
-                'order_date_formatted' => $orderDateFormatted,
-                'order_status' => Validate::isLoadedObject($orderState) ? (string) $orderState->name : '',
-                'order_status_id' => (int) $order->current_state,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
-                'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
-                'total_paid' => (float) $order->total_paid,
-                'total_paid_tax_incl' => (float) $order->total_paid_tax_incl,
-                'total_paid_tax_excl' => (float) $order->total_paid_tax_excl,
-                'total_tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
-                'total_products' => (float) $order->total_products,
-                'total_products_tax_incl' => (float) $order->total_products_wt,
-                'total_products_tax_excl' => (float) $order->total_products,
-                'total_products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
-                'total_shipping' => (float) $order->total_shipping,
-                'total_shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
-                'total_shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
-                'total_shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
-                'total_discounts' => (float) $order->total_discounts,
-                'total_discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
-                'total_discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
-                'total_discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
-                'payment_method_id' => $paymentMethodId,
-                'payment_method' => (string) $order->payment,
-                'payment_module' => (string) $order->module,
-                'carrier_id' => (int) $order->id_carrier,
-                'carrier_reference_id' => Validate::isLoadedObject($carrier) ? (int) $carrier->id_reference : 0,
-                'carrier_name' => Validate::isLoadedObject($carrier) ? (string) $carrier->name : '',
+                'total_paid' => $this->roundPayloadAmount($order->total_paid),
+                'total_paid_tax_incl' => $this->roundPayloadAmount($order->total_paid_tax_incl),
+                'total_paid_tax_excl' => $this->roundPayloadAmount($order->total_paid_tax_excl),
+                'total_tax_amount' => $this->subtractPayloadAmounts($order->total_paid_tax_incl, $order->total_paid_tax_excl),
+                'total_products' => $this->roundPayloadAmount($order->total_products),
+                'total_products_tax_incl' => $this->roundPayloadAmount($order->total_products_wt),
+                'total_products_tax_excl' => $this->roundPayloadAmount($order->total_products),
+                'total_products_tax_amount' => $this->subtractPayloadAmounts($order->total_products_wt, $order->total_products),
+                'total_shipping' => $this->roundPayloadAmount($order->total_shipping),
+                'total_shipping_tax_incl' => $this->roundPayloadAmount($order->total_shipping_tax_incl),
+                'total_shipping_tax_excl' => $this->roundPayloadAmount($order->total_shipping_tax_excl),
+                'total_shipping_tax_amount' => $this->subtractPayloadAmounts($order->total_shipping_tax_incl, $order->total_shipping_tax_excl),
+                'total_discounts' => $this->roundPayloadAmount($order->total_discounts),
+                'total_discounts_tax_incl' => $this->roundPayloadAmount($order->total_discounts_tax_incl),
+                'total_discounts_tax_excl' => $this->roundPayloadAmount($order->total_discounts_tax_excl),
+                'total_discounts_tax_amount' => $this->subtractPayloadAmounts($order->total_discounts_tax_incl, $order->total_discounts_tax_excl),
                 'tracking_code' => $trackingCode,
                 'tracking_url' => $trackingUrl,
                 'servientrega' => $servientrega ?: [],
                 $eventDateProperty => $eventDate,
-                'products' => $products,
                 'related_products' => (new BrevoRelatedProductsProvider($this->context))->getRelatedProducts(
                     array_values(array_unique($categoryIds)),
                     array_values(array_unique($excludedProductIds)),
                     3
                 ),
                 'shop_reviews' => $shopReviews,
-                'shop_review_url' => (string) Configuration::get(self::CONFIG_SHOP_REVIEW_URL),
-                'reorder_url' => $reorderUrl,
-                'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
             ],
         ];
     }
@@ -634,18 +594,12 @@ class Brevocustom extends Module
             ],
             'event_properties' => [
                 'customer' => $this->buildCustomerGroupPayload($customer, $email),
-                'reviews' => $shopReviews,
                 'main_categories' => $mainCategories,
                 'misc' => $this->buildMiscGroupPayload([
                     'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 ]),
-                'email' => $email,
-                'customer_id' => Validate::isLoadedObject($customer) ? (int) $customer->id : null,
-                'is_customer' => Validate::isLoadedObject($customer),
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
-                'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 'shop_reviews' => $shopReviews,
-                'main_categories' => $mainCategories,
             ],
         ];
     }
@@ -678,14 +632,14 @@ class Brevocustom extends Module
 
         $eventDate = date(DATE_ATOM);
         $cartUpdatedAt = $this->formatDateForBrevo((string) $cart->date_upd);
-        $cartTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::BOTH);
-        $cartTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::BOTH);
-        $cartProductsTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_PRODUCTS);
-        $cartProductsTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_PRODUCTS);
-        $cartShippingTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_SHIPPING);
-        $cartShippingTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_SHIPPING);
-        $cartDiscountsTotalTaxIncl = (float) $cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS);
-        $cartDiscountsTotalTaxExcl = (float) $cart->getOrderTotal(false, Cart::ONLY_DISCOUNTS);
+        $cartTotalTaxIncl = $this->roundPayloadAmount($cart->getOrderTotal(true, Cart::BOTH));
+        $cartTotalTaxExcl = $this->roundPayloadAmount($cart->getOrderTotal(false, Cart::BOTH));
+        $cartProductsTotalTaxIncl = $this->roundPayloadAmount($cart->getOrderTotal(true, Cart::ONLY_PRODUCTS));
+        $cartProductsTotalTaxExcl = $this->roundPayloadAmount($cart->getOrderTotal(false, Cart::ONLY_PRODUCTS));
+        $cartShippingTotalTaxIncl = $this->roundPayloadAmount($cart->getOrderTotal(true, Cart::ONLY_SHIPPING));
+        $cartShippingTotalTaxExcl = $this->roundPayloadAmount($cart->getOrderTotal(false, Cart::ONLY_SHIPPING));
+        $cartDiscountsTotalTaxIncl = $this->roundPayloadAmount($cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS));
+        $cartDiscountsTotalTaxExcl = $this->roundPayloadAmount($cart->getOrderTotal(false, Cart::ONLY_DISCOUNTS));
 
         return [
             'event_name' => 'vx_abandoned_cart',
@@ -725,32 +679,8 @@ class Brevocustom extends Module
                     'cart_url' => $this->context->link->getPageLink('cart', true, $idLang, ['action' => 'show']),
                     'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
                 ]),
-                'cart_id' => (int) $cart->id,
-                'customer_id' => (int) $customer->id,
-                'customer_email' => (string) $customer->email,
                 'shop_url' => (string) Configuration::get(self::CONFIG_SHOP_URL),
                 'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
-                'cart_total' => $cartTotalTaxIncl,
-                'cart_total_tax_incl' => $cartTotalTaxIncl,
-                'cart_total_tax_excl' => $cartTotalTaxExcl,
-                'cart_total_tax_amount' => $cartTotalTaxIncl - $cartTotalTaxExcl,
-                'cart_products_total' => $cartProductsTotalTaxIncl,
-                'cart_products_total_tax_incl' => $cartProductsTotalTaxIncl,
-                'cart_products_total_tax_excl' => $cartProductsTotalTaxExcl,
-                'cart_products_total_tax_amount' => $cartProductsTotalTaxIncl - $cartProductsTotalTaxExcl,
-                'cart_shipping_total' => $cartShippingTotalTaxIncl,
-                'cart_shipping_total_tax_incl' => $cartShippingTotalTaxIncl,
-                'cart_shipping_total_tax_excl' => $cartShippingTotalTaxExcl,
-                'cart_shipping_total_tax_amount' => $cartShippingTotalTaxIncl - $cartShippingTotalTaxExcl,
-                'cart_discounts_total' => $cartDiscountsTotalTaxIncl,
-                'cart_discounts_total_tax_incl' => $cartDiscountsTotalTaxIncl,
-                'cart_discounts_total_tax_excl' => $cartDiscountsTotalTaxExcl,
-                'cart_discounts_total_tax_amount' => $cartDiscountsTotalTaxIncl - $cartDiscountsTotalTaxExcl,
-                'cart_updated_at' => $cartUpdatedAt,
-                'abandoned_minutes' => (int) floor((time() - strtotime((string) $cart->date_upd)) / 60),
-                'cart_url' => $this->context->link->getPageLink('cart', true, $idLang, ['action' => 'show']),
-                'contact_url' => (string) Configuration::get(self::CONFIG_CONTACT_URL),
-                'products' => $products,
                 'related_products' => (new BrevoRelatedProductsProvider($this->context))->getRelatedProducts(
                     array_values(array_unique($categoryIds)),
                     array_values(array_unique($excludedProductIds)),
@@ -774,10 +704,10 @@ class Brevocustom extends Module
             $product = new Product($idProduct, false, $idLang, (int) $cart->id_shop);
             $categoryId = (int) ($product->id_category_default ?? 0);
             $quantity = (int) ($cartProduct['cart_quantity'] ?? $cartProduct['quantity'] ?? 0);
-            $unitPriceTaxIncl = (float) ($cartProduct['price_wt'] ?? $cartProduct['price'] ?? 0);
-            $unitPriceTaxExcl = (float) ($cartProduct['price'] ?? $unitPriceTaxIncl);
-            $totalPriceTaxIncl = (float) ($cartProduct['total_wt'] ?? ($unitPriceTaxIncl * $quantity));
-            $totalPriceTaxExcl = (float) ($cartProduct['total'] ?? ($unitPriceTaxExcl * $quantity));
+            $unitPriceTaxIncl = $this->roundPayloadAmount($cartProduct['price_wt'] ?? $cartProduct['price'] ?? 0);
+            $unitPriceTaxExcl = $this->roundPayloadAmount($cartProduct['price'] ?? $unitPriceTaxIncl);
+            $totalPriceTaxIncl = $this->roundPayloadAmount($cartProduct['total_wt'] ?? ($unitPriceTaxIncl * $quantity));
+            $totalPriceTaxExcl = $this->roundPayloadAmount($cartProduct['total'] ?? ($unitPriceTaxExcl * $quantity));
 
             $products[] = [
                 'id_product' => $idProduct,
@@ -790,12 +720,12 @@ class Brevocustom extends Module
                 'unit_price' => $unitPriceTaxIncl,
                 'unit_price_tax_incl' => $unitPriceTaxIncl,
                 'unit_price_tax_excl' => $unitPriceTaxExcl,
-                'unit_price_tax_amount' => $unitPriceTaxIncl - $unitPriceTaxExcl,
+                'unit_price_tax_amount' => $this->subtractPayloadAmounts($unitPriceTaxIncl, $unitPriceTaxExcl),
                 'total_price' => $totalPriceTaxIncl,
                 'total_price_tax_incl' => $totalPriceTaxIncl,
                 'total_price_tax_excl' => $totalPriceTaxExcl,
-                'total_price_tax_amount' => $totalPriceTaxIncl - $totalPriceTaxExcl,
-                'tax_rate' => (float) ($cartProduct['rate'] ?? 0),
+                'total_price_tax_amount' => $this->subtractPayloadAmounts($totalPriceTaxIncl, $totalPriceTaxExcl),
+                'tax_rate' => $this->roundPayloadAmount($cartProduct['rate'] ?? 0),
                 'tax_name' => (string) ($cartProduct['tax_name'] ?? ''),
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $this->getProductImageUrl($product, $idProduct, $idProductAttribute),
@@ -804,6 +734,16 @@ class Brevocustom extends Module
         }
 
         return $products;
+    }
+
+    private function roundPayloadAmount($amount): float
+    {
+        return round((float) $amount, 2);
+    }
+
+    private function subtractPayloadAmounts($left, $right): float
+    {
+        return $this->roundPayloadAmount((float) $left - (float) $right);
     }
 
     private function buildOrderProducts(Order $order, int $idLang): array
@@ -819,10 +759,10 @@ class Brevocustom extends Module
 
             $product = new Product($idProduct, false, $idLang, (int) $order->id_shop);
             $categoryId = (int) ($product->id_category_default ?? 0);
-            $unitPriceTaxIncl = (float) ($orderProduct['unit_price_tax_incl'] ?? $orderProduct['product_price'] ?? 0);
-            $unitPriceTaxExcl = (float) ($orderProduct['unit_price_tax_excl'] ?? $orderProduct['product_price'] ?? $unitPriceTaxIncl);
-            $totalPriceTaxIncl = (float) ($orderProduct['total_price_tax_incl'] ?? 0);
-            $totalPriceTaxExcl = (float) ($orderProduct['total_price_tax_excl'] ?? $orderProduct['total_price'] ?? 0);
+            $unitPriceTaxIncl = $this->roundPayloadAmount($orderProduct['unit_price_tax_incl'] ?? $orderProduct['product_price'] ?? 0);
+            $unitPriceTaxExcl = $this->roundPayloadAmount($orderProduct['unit_price_tax_excl'] ?? $orderProduct['product_price'] ?? $unitPriceTaxIncl);
+            $totalPriceTaxIncl = $this->roundPayloadAmount($orderProduct['total_price_tax_incl'] ?? 0);
+            $totalPriceTaxExcl = $this->roundPayloadAmount($orderProduct['total_price_tax_excl'] ?? $orderProduct['total_price'] ?? 0);
 
             $products[] = [
                 'id_product' => $idProduct,
@@ -835,12 +775,12 @@ class Brevocustom extends Module
                 'unit_price' => $unitPriceTaxIncl,
                 'unit_price_tax_incl' => $unitPriceTaxIncl,
                 'unit_price_tax_excl' => $unitPriceTaxExcl,
-                'unit_price_tax_amount' => $unitPriceTaxIncl - $unitPriceTaxExcl,
+                'unit_price_tax_amount' => $this->subtractPayloadAmounts($unitPriceTaxIncl, $unitPriceTaxExcl),
                 'total_price' => $totalPriceTaxIncl,
                 'total_price_tax_incl' => $totalPriceTaxIncl,
                 'total_price_tax_excl' => $totalPriceTaxExcl,
-                'total_price_tax_amount' => $totalPriceTaxIncl - $totalPriceTaxExcl,
-                'tax_rate' => (float) ($orderProduct['tax_rate'] ?? 0),
+                'total_price_tax_amount' => $this->subtractPayloadAmounts($totalPriceTaxIncl, $totalPriceTaxExcl),
+                'tax_rate' => $this->roundPayloadAmount($orderProduct['tax_rate'] ?? 0),
                 'tax_name' => (string) ($orderProduct['tax_name'] ?? ''),
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $this->getProductImageUrl($product, $idProduct, $idProductAttribute),
@@ -902,22 +842,22 @@ class Brevocustom extends Module
             'status_id' => (int) $order->current_state,
             'currency' => Validate::isLoadedObject($currency) ? (string) $currency->iso_code : '',
             'totals' => [
-                'paid' => (float) $order->total_paid,
-                'paid_tax_incl' => (float) $order->total_paid_tax_incl,
-                'paid_tax_excl' => (float) $order->total_paid_tax_excl,
-                'tax_amount' => (float) $order->total_paid_tax_incl - (float) $order->total_paid_tax_excl,
-                'products' => (float) $order->total_products,
-                'products_tax_incl' => (float) $order->total_products_wt,
-                'products_tax_excl' => (float) $order->total_products,
-                'products_tax_amount' => (float) $order->total_products_wt - (float) $order->total_products,
-                'shipping' => (float) $order->total_shipping,
-                'shipping_tax_incl' => (float) $order->total_shipping_tax_incl,
-                'shipping_tax_excl' => (float) $order->total_shipping_tax_excl,
-                'shipping_tax_amount' => (float) $order->total_shipping_tax_incl - (float) $order->total_shipping_tax_excl,
-                'discounts' => (float) $order->total_discounts,
-                'discounts_tax_incl' => (float) $order->total_discounts_tax_incl,
-                'discounts_tax_excl' => (float) $order->total_discounts_tax_excl,
-                'discounts_tax_amount' => (float) $order->total_discounts_tax_incl - (float) $order->total_discounts_tax_excl,
+                'paid' => $this->roundPayloadAmount($order->total_paid),
+                'paid_tax_incl' => $this->roundPayloadAmount($order->total_paid_tax_incl),
+                'paid_tax_excl' => $this->roundPayloadAmount($order->total_paid_tax_excl),
+                'tax_amount' => $this->subtractPayloadAmounts($order->total_paid_tax_incl, $order->total_paid_tax_excl),
+                'products' => $this->roundPayloadAmount($order->total_products),
+                'products_tax_incl' => $this->roundPayloadAmount($order->total_products_wt),
+                'products_tax_excl' => $this->roundPayloadAmount($order->total_products),
+                'products_tax_amount' => $this->subtractPayloadAmounts($order->total_products_wt, $order->total_products),
+                'shipping' => $this->roundPayloadAmount($order->total_shipping),
+                'shipping_tax_incl' => $this->roundPayloadAmount($order->total_shipping_tax_incl),
+                'shipping_tax_excl' => $this->roundPayloadAmount($order->total_shipping_tax_excl),
+                'shipping_tax_amount' => $this->subtractPayloadAmounts($order->total_shipping_tax_incl, $order->total_shipping_tax_excl),
+                'discounts' => $this->roundPayloadAmount($order->total_discounts),
+                'discounts_tax_incl' => $this->roundPayloadAmount($order->total_discounts_tax_incl),
+                'discounts_tax_excl' => $this->roundPayloadAmount($order->total_discounts_tax_excl),
+                'discounts_tax_amount' => $this->subtractPayloadAmounts($order->total_discounts_tax_incl, $order->total_discounts_tax_excl),
             ],
             'items' => $items,
         ];
@@ -934,14 +874,14 @@ class Brevocustom extends Module
 
     private function buildCartGroupPayload(Cart $cart, array $items, string $cartUpdatedAt, array $totals, int $idLang): array
     {
-        $totalTaxIncl = (float) ($totals['total_tax_incl'] ?? 0);
-        $totalTaxExcl = (float) ($totals['total_tax_excl'] ?? 0);
-        $productsTaxIncl = (float) ($totals['products_tax_incl'] ?? 0);
-        $productsTaxExcl = (float) ($totals['products_tax_excl'] ?? 0);
-        $shippingTaxIncl = (float) ($totals['shipping_tax_incl'] ?? 0);
-        $shippingTaxExcl = (float) ($totals['shipping_tax_excl'] ?? 0);
-        $discountsTaxIncl = (float) ($totals['discounts_tax_incl'] ?? 0);
-        $discountsTaxExcl = (float) ($totals['discounts_tax_excl'] ?? 0);
+        $totalTaxIncl = $this->roundPayloadAmount($totals['total_tax_incl'] ?? 0);
+        $totalTaxExcl = $this->roundPayloadAmount($totals['total_tax_excl'] ?? 0);
+        $productsTaxIncl = $this->roundPayloadAmount($totals['products_tax_incl'] ?? 0);
+        $productsTaxExcl = $this->roundPayloadAmount($totals['products_tax_excl'] ?? 0);
+        $shippingTaxIncl = $this->roundPayloadAmount($totals['shipping_tax_incl'] ?? 0);
+        $shippingTaxExcl = $this->roundPayloadAmount($totals['shipping_tax_excl'] ?? 0);
+        $discountsTaxIncl = $this->roundPayloadAmount($totals['discounts_tax_incl'] ?? 0);
+        $discountsTaxExcl = $this->roundPayloadAmount($totals['discounts_tax_excl'] ?? 0);
 
         return [
             'id' => (int) $cart->id,
@@ -952,19 +892,19 @@ class Brevocustom extends Module
                 'total' => $totalTaxIncl,
                 'total_tax_incl' => $totalTaxIncl,
                 'total_tax_excl' => $totalTaxExcl,
-                'total_tax_amount' => $totalTaxIncl - $totalTaxExcl,
+                'total_tax_amount' => $this->subtractPayloadAmounts($totalTaxIncl, $totalTaxExcl),
                 'products' => $productsTaxIncl,
                 'products_tax_incl' => $productsTaxIncl,
                 'products_tax_excl' => $productsTaxExcl,
-                'products_tax_amount' => $productsTaxIncl - $productsTaxExcl,
+                'products_tax_amount' => $this->subtractPayloadAmounts($productsTaxIncl, $productsTaxExcl),
                 'shipping' => $shippingTaxIncl,
                 'shipping_tax_incl' => $shippingTaxIncl,
                 'shipping_tax_excl' => $shippingTaxExcl,
-                'shipping_tax_amount' => $shippingTaxIncl - $shippingTaxExcl,
+                'shipping_tax_amount' => $this->subtractPayloadAmounts($shippingTaxIncl, $shippingTaxExcl),
                 'discounts' => $discountsTaxIncl,
                 'discounts_tax_incl' => $discountsTaxIncl,
                 'discounts_tax_excl' => $discountsTaxExcl,
-                'discounts_tax_amount' => $discountsTaxIncl - $discountsTaxExcl,
+                'discounts_tax_amount' => $this->subtractPayloadAmounts($discountsTaxIncl, $discountsTaxExcl),
             ],
             'items' => $items,
         ];

@@ -28,7 +28,7 @@ class BrevoServientregaProvider
             'pedido' => (string) $row['pedido'],
             'estado' => (int) $row['estado'],
             'fecha' => (string) $row['fecha'],
-            'total' => (string) $row['total'],
+            'total' => is_numeric($row['total']) ? round((float) $row['total'], 2) : (string) $row['total'],
             'rastreoEnvio' => (string) $row['rastreoEnvio'],
             'razon' => (string) $row['razon'],
             'city' => (string) $row['city'],

@@ -69,7 +69,7 @@ class BrevoRelatedProductsProvider
                 'name' => (string) $row['name'],
                 'category_id' => (int) $row['id_category_default'],
                 'category_name' => (string) $row['category_name'],
-                'price' => (float) Product::getPriceStatic($idProduct, true),
+                'price' => $this->roundPayloadAmount(Product::getPriceStatic($idProduct, true)),
                 'currency' => $this->context->currency ? (string) $this->context->currency->iso_code : '',
                 'product_url' => $this->context->link->getProductLink($product),
                 'image_url' => $imageUrl,
@@ -77,5 +77,10 @@ class BrevoRelatedProductsProvider
         }
 
         return $products;
+    }
+
+    private function roundPayloadAmount($amount): float
+    {
+        return round((float) $amount, 2);
     }
 }
